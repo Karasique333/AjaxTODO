@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Приложение для отображения постов</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            color: #333;
+        }
+
+        .post {
+            border: 1px solid #ddd;
+            margin: 10px;
+            padding: 10px;
+            background-color: #fff;
+        }
+
+        .important-post {
+            background-color: #ffcccc;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            padding: 20px;
+            background-color: #fff;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            z-index: 1;
+        }
+
+        .dark-theme {
+            background-color: #333;
+            color: #fff;
+        }
+    </style>
+</head>
+<body>
+
+<div id="posts-container"></div>
+
+<button onclick="openPostForm()">Создать пост</button>
+<button onclick="toggleTheme()">Сменить тему</button>
+
+<div id="post-modal" class="modal">
+    <form id="post-form">
+        <input type="hidden" id="post-id" name="post-id">
+
+        <label for="title">Заголовок:</label>
+        <input type="text" id="title" name="title" required>
+
+        <label for="body">Содержание:</label>
+        <textarea id="body" name="body" required></textarea>
+
+        <label for="userId">Автор:</label>
+        <select id="userId" name="userId" required></select>
+
+        <button type="submit" id="save-post-btn">Сохранить</button>
+        <button type="button" onclick="closePostForm()">Отмена</button>
+    </form>
+</div>
+
+<script>
+    let posts = [];
+    let users = [];
+
+    function getUsers() {
+        return fetch("https://jsonplaceholder.typicode.com/users")
+            .then(response => response.json())
+            .catch(error => console.error(`Ошибка при загрузке списка пользователей: ${error}`));
+    }
+
+    function getPosts() {
+        return fetch("https://jsonplaceholder.typicode.com/posts")
+            .then(response => response.json())
+            .then(data => {
+                posts = data;
+                savePosts();
+                return posts;
+            })
+            .catch(error => console.error(`Ошибка при загрузке списка постов: ${error}`));
+    }
+
+    function savePosts() {
+        localStorage.setItem("posts", JSON.stringify(posts));
+    }
+
+    function createPost(postData) {
+        return fetch("https://jsonplaceholder.typicode.com/posts", {
+            method: 'POST',
+            body: JSON.stringify(postData),
+            headers: {
+                'Content-type': 'application/json; charset=UTF-8',
+            },
+        })
+            .then(response => response.json())
+            .then(data => {
+                posts.push(data);
+                savePosts();
+                return data;
+            })
+            .catch(error => console.error(`Ошибка при создании поста: ${error}`));
+    }
+
+    function updatePost(postId, postData) {
+        return fetch(`https://jsonplaceholder.typicode.com/posts/${postId}`, {
+            method: 'PUT',
+            body: JSON.stringify(postData),
+            headers: {
+                'Content-type': 'application/json; charset=UTF-8',
+            },
+        })
+            .then(response => response.json())
+            .then(updatedPost => {
+
+                const index = posts.findIndex(post => post.id === postId);
+                if (index !== -1) {
+                    posts[index] = updatedPost;
+                    //confirm(updatedPost.name)
+                    savePosts();
+                }
+                return updatedPost;
+            })
+            .catch(error => console.error(`Ошибка при редактировании поста: ${error}`));
+    }
+
+    function deletePost(postId) {
+        return fetch(`https://jsonplaceholder.typicode.com/posts/${postId}`, {
+            method: 'DELETE',
+        })
+            .then(response => response.json())
+            .then(() => {
+                posts = posts.filter(post => post.id !== postId);
+                savePosts();
+            })
+            .catch(error => console.error(`Ошибка при удалении поста: ${error}`));
+    }
+
+    function openPostForm() {
+        const select = document.getElementById("userId");
+        select.innerHTML = "";
+        users.forEach(user => {
+            const option = document.createElement("option");
+            option.value = user.id;
+            option.text = user.name;
+            select.appendChild(option);
+        });
+
+        document.getElementById("post-form").reset();
+        document.getElementById("post-modal").style.display = "block";
+    }
+
+    function closePostForm() {
+        document.getElementById("post-modal").style.display = "none";
+    }
+
+    function toggleTheme() {
+        document.body.classList.toggle("dark-theme");
+        const currentTheme = document.body.classList.contains("dark-theme") ? "dark" : "light";
+        localStorage.setItem("theme", currentTheme);
+    }
+
+ /*   function renderPosts() {
+        const postsContainer = document.getElementById("posts-container");
+        postsContainer.innerHTML = "";
+
+        posts.forEach(post => {
+            const postContainer = document.createElement("div");
+            postContainer.className = "post";
+            //confirm(post.userId)
+            postContainer.innerHTML = `
+        <h3>${post.title}</h3>
+        <p>${post.body}</p>
+        <p>Автор: <span class="author-name" data-userid="${post.userId}"></span></p>
+        <button onclick="editPost(${post.id})">Редактировать</button>
+        <button onclick="deletePostHandler(${post.id})">Удалить</button>
+      `;
+
+            if (localStorage.getItem(`important_${post.id}`) === 'true') {
+                postContainer.classList.add('important-post');
+            }
+
+            postsContainer.appendChild(postContainer);
+            const user = users.find(u => u.id === post.userId);
+            if (user) {
+                postContainer.querySelector(".author-name").innerText = user.name;
+            }
+        });
+    }*/
+    /*function renderPosts() {
+        const postsContainer = document.getElementById("posts-container");
+        postsContainer.innerHTML = "";
+
+        posts.forEach(post => {
+            const postContainer = document.createElement("div");
+            postContainer.className = "post";
+            const user = users.find(u => u.id == post.userId);
+
+            postContainer.innerHTML = `
+            <h3>${post.title}</h3>
+            <p>${post.body}</p>
+            <p>Автор: ${getAuthorName(post.userId)}</p>
+            <p>Автор: ${user.name}</p>
+            <button onclick="editPost(${post.id})">Редактировать</button>
+            <button onclick="deletePostHandler(${post.id})">Удалить</button>
+        `;
+
+            if (localStorage.getItem(`important_${post.id}`) === 'true') {
+                postContainer.classList.add('important-post');
+            }
+
+            postsContainer.appendChild(postContainer);
+        });
+    }
+
+    function getAuthorName(userId) {
+        const user = users.find(u => u.id == userId);
+        return user ? user.name : "Unknown User";
+    }*/
+    function renderPosts() {
+        const postsContainer = document.getElementById("posts-container");
+        postsContainer.innerHTML = "";
+
+        posts.forEach(post => {
+            const postContainer = document.createElement("div");
+            postContainer.className = "post";
+
+            postContainer.innerHTML = `
+            <h3>${post.title}</h3>
+            <p>${post.body}</p>
+            <p>Автор: ${getAuthorName(post.userId)}</p>
+            <button onclick="editPost(${post.id})">Редактировать</button>
+            <button onclick="deletePostHandler(${post.id})">Удалить</button>
+        `;
+
+            if (localStorage.getItem(`important_${post.id}`) === 'true') {
+                postContainer.classList.add('important-post');
+            }
+
+            postsContainer.appendChild(postContainer);
+        });
+    }
+
+    function getAuthorName(userId) {
+        const user = users.find(u => String(u.id) === String(userId));
+        return user ? user.name : "Unknown User";
+    }
+
+    document.getElementById("post-form").addEventListener("submit", function (event) {
+        event.preventDefault();
+        const postId = document.getElementById("post-id").value;
+        const postData = {
+            title: document.getElementById("title").value,
+            body: document.getElementById("body").value,
+            userId: document.getElementById("userId").value,
+        };
+
+        if (postId) {
+            updatePost(postId, postData)
+                .then(() => {
+                    renderPosts();
+                    closePostForm();
+                })
+                .catch(error => console.error(`Ошибка при обработке обновления поста: ${error}`));
+        } else {
+            createPost(postData)
+                .then(() => {
+                    renderPosts();
+                    closePostForm();
+                })
+                .catch(error => console.error(`Ошибка при обработке создания поста: ${error}`));
+        }
+    });
+
+
+    function editPost(postId) {
+        const select = document.getElementById("userId");
+        select.innerHTML = "";
+
+        if (users.length === 0) {
+            loadUsers()
+                .then(() => {
+                    populateUsersSelect();
+                    continueEdit();
+                })
+                .catch(error => console.error(`Ошибка при загрузке пользователей: ${error}`));
+        } else {
+            populateUsersSelect();
+            continueEdit();
+        }
+
+        function populateUsersSelect() {
+            users.forEach(user => {
+                const option = document.createElement("option");
+                option.value = user.id;
+                option.text = user.name;
+                select.appendChild(option);
+            });
+        }
+
+        function continueEdit() {
+            const post = posts.find(p => p.id === postId);
+            if (post) {
+                document.getElementById("post-id").value = postId;
+                document.getElementById("title").value = post.title;
+                document.getElementById("body").value = post.body;
+                document.getElementById("userId").value = post.userId;
+
+                openPostForm();
+
+                const saveBtn = document.getElementById("save-post-btn");
+                saveBtn.onclick = function () {
+                    const formData = new FormData(document.getElementById("post-form"));
+
+                    const updatedPostData = {
+                        title: formData.get("title"),
+                        body: formData.get("body"),
+                        userId: formData.get("userId"),
+                    };
+                    //confirm(updatedPostData.userId)
+
+
+                    const user = users.find(u => u.id === parseInt(updatedPostData.userId));
+                    if (user) {
+                        updatedPostData.name = user.name;
+
+                    }
+                    //confirm(updatedPostData.name)
+
+                    updatePost(postId, updatedPostData)
+                        .then(() => {
+                            renderPosts();
+                            closePostForm();
+                        })
+                        .catch(error => console.error(`Ошибка при обработке обновления поста: ${error}`));
+                };
+            }
+        }
+    }
+
+    /*
+        function editPost(postId) {
+            const select = document.getElementById("userId");
+            select.innerHTML = "";
+            users.forEach(user => {
+                const option = document.createElement("option");
+                option.value = user.id;
+                option.text = user.name;
+                select.appendChild(option);
+            });
+            const post = posts.find(p => p.id === postId);
+            if (post) {
+                document.getElementById("post-id").value = postId;
+                document.getElementById("title").value = post.title;
+                document.getElementById("body").value = post.body;
+                document.getElementById("userId").value = post.userId;
+
+
+                openPostForm();
+
+
+                document.getElementById("save-post-btn").onclick = function () {
+                    const formData = new FormData(document.getElementById("post-form"));
+
+                    const updatedPostData = {
+                        title: formData.get("title"),
+                        body: formData.get("body"),
+                        userId: formData.get("userId"),
+                    };
+                    //confirm(updatedPostData.name)
+                    updatePost(postId, updatedPostData)
+                        .then(() => {
+                            renderPosts();
+                            closePostForm();
+                        })
+                        .catch(error => console.error(`Ошибка при обработке обновления поста: ${error}`));
+                };
+            }
+        }
+
+    */
+
+    function deletePostHandler(postId) {
+        if (confirm("Вы уверены, что хотите удалить пост?")) {
+            deletePost(postId)
+                .then(() => {
+                    renderPosts();
+                })
+                .catch(error => console.error(`Ошибка при обработке удаления поста: ${error}`));
+        }
+    }
+
+    document.addEventListener("DOMContentLoaded", function () {
+        const savedTheme = localStorage.getItem("theme");
+        if (savedTheme === "dark") {
+            document.body.classList.add("dark-theme");
+        }
+
+        getUsers()
+            .then(data => {
+                users = data;
+                return getPosts();
+            })
+            .then(() => {
+                renderPosts();
+            })
+            .catch(error => console.error(`Ошибка при инициализации приложения: ${error}`));
+    });
+</script>
+
+</body>
+</html>
